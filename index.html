@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Leaflet CDN-->
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+    crossorigin=""/>
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+    integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+    crossorigin=""></script>
+    
+    <!--Leaflet-choropleth plugin (used for classification)-->
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-choropleth@1.1.4/dist/choropleth.min.js"></script>
+    
+    <!--Ajax CDN-->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js" integrity="sha256-oP6HI9z1XaZNBrJURtCoUT5SUnxFr8s3BzRl+cbzUq8=" crossorigin="anonymous"></script>
+
+   <title>Peta Unsur Hara Lahan</title>
+
+   <style type="text/css">
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Helvetica, sans-serif;
+        }
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+        }
+        .container {
+            max-width: 300px;
+            width: 300px;
+            background: whitesmoke;
+            padding: 8px 15px;
+            border-radius: 3px;
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            margin: auto;
+            z-index: 500;
+            opacity: 0.9;
+        }
+        .container:hover {
+            opacity: 1;
+        }
+        .container .title {
+            font-size: 20px;
+            font-weight: 500;
+            position: relative;
+            text-align: center;
+            padding-bottom: 3px;
+        }
+        .container .title::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            height: 2px;
+            width: 300px;
+            background: linear-gradient(135deg, #2DA3A9, #21781C);
+        }
+        .container form .detail-input {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin: 2px 15px 2px 0;
+        }
+        form .detail-input .box-input {
+            width: calc(100% / 2 - 40px);
+            margin-bottom: 8px;
+            margin-right: 8px;
+        } 
+        .detail-input .box-input input {
+            height: 25px;
+            width: 90%;
+            outline: none;
+            border-radius: 2px;
+            border: 1px solid #ccc;
+            padding-left: 4px;
+            font-size: 12px;
+        }
+        .detail-input .box-input input[type = 'number'] {
+            width: 120%;
+        }
+        .detail-input .box-input .unsur {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 3px;
+            padding-left: 1px;
+        }
+        .legenda-container {
+            background-color: whitesmoke;
+            padding: 8px 15px;
+            border-radius: 3px;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            margin: auto;
+            z-index: 500;
+            opacity: 1;
+        }
+        .legenda-container .legenda-judul {
+            font-size: 20px;
+            font-weight: 500;
+            position: relative;
+            text-align: center;
+            padding-bottom: 3px;
+        }
+        .legenda-container .legenda-layer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin: 2px 15px 2px 0;
+        }
+        .sublegend-color {
+            width: 20px;
+            border: 1px solid #666666;
+            display: inline-block;
+            opacity: 0.8;
+        }
+        .sublegend-item {
+            padding-top: 0.2em;
+        }
+        .sublegend {
+            list-style: none;
+            padding-inline-start: 24px;
+            margin-top: 0px;
+        }
+
+   </style>
+
+
+
+</head>
+
+<body>
+    <div id="map"></div>
+    <div class="container">
+        <div class="title">Klasifikasi Kelas Unsur Hara</div>
+        <form action="#">
+            <div class="detail-input">
+                <div class="box-input">
+                    <span class="unsur">Kelas N</span>
+                    <input id="kelas_n" type="number" title="Masukkan jumlah kelas untuk N" min="1" max="15" value="1">
+                </div>
+                <div class="box-input">
+                    <span class="unsur">Kelas P</span>
+                    <input id="kelas_p" type="number" title="Masukkan jumlah kelas untuk P" min="1" max="15" value="1">
+                </div>
+                <div class="box-input">
+                    <span class="unsur">Kelas K</span>
+                    <input id="kelas_k" type="number" title="Masukkan jumlah kelas untuk K" min="1" max="15" value="1">
+                </div>                
+                <div class="box-input">
+                    <span class="unsur">Kelas pH</span>
+                    <input id="kelas_ph" type="number" title="Masukkan jumlah kelas untuk pH" min="1" max="15" value="1">
+                </div>                
+            </div>
+        </form>
+    </div>
+    <div class="legenda-container">
+        <div class="legenda-judul" title="Ubah jumlah kelas unsur hara untuk melihat legenda">Legenda
+        </div>
+        <div class="legenda-layer">            
+            <div id="legenda_n" style="display: none"></div>
+            <div id="legenda_p" style="display: none"></div>
+            <div id="legenda_k" style="display: none"></div>            
+            <div id="legenda_ph" style="display: none"></div>
+        </div>
+    </div>
+
+
+<!--Menambahkan sumber data-->
+<script type="text/javascript" src="data/baru.geojson"></script>
+
+<script type="text/javascript">
+    var highlightLayer;
+    var map = L.map('map').setView([-6.8, 107.24], 9);
+    var osm = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    var baseMaps = {
+        "OSM": osm
+    }
+    var layerControl = L.control.layers(baseMaps, null).addTo(map);
+
+    var baru_layer;
+    var baru_layer = L.geoJSON(baru, {
+        onEachFeature: function (feature, layer) {
+            layer.on({
+                    mouseout: highlightReset,
+                    mouseover: highlightFeature
+                });
+            layer.bindPopup('<h4>Unit Name : ' + feature.properties.UNITNAME + '</h4>' +
+                            '<h4>Name :  ' + feature.properties.NAME + '</h4>' +
+                            '<h4>General_De : ' + feature.properties.GENERAL_DE + '</h4>' +
+		    				'<h4>Slope : ' + feature.properties.SLOPE__ + '</h4>' +
+		    				'<h4>Lithology : ' + feature.properties.LITHOLOGY + '</h4>' +
+                            '<h4>Soil_Great : ' + feature.properties.SOIL_GREAT + '</h4>' +		    				
+		    				'<h4>N :  ' + feature.properties.N_rata2 + '</h4>' +
+		    				'<h4>P :  ' + feature.properties.P_rata2 + '</h4>' +
+                            '<h4>K : ' + feature.properties.K_rata2 + '</h4>' +
+		    				'<h4>pH : ' + feature.properties.pH_rata2 + '</h4>');
+
+        }
+    }).addTo(map);
+    layerControl.addOverlay(baru_layer, "Info Umum");
+    
+    var n_layer;
+    var p_layer;
+    var k_layer;
+    var ph_layer;
+
+    style = {
+        color: '#000',
+        weight: 0.8,
+        fillOpacity: 0.9
+    }
+
+    function highlightFeature(e) {
+            highlightLayer = e.target;
+
+            if (e.target.feature.geometry.type === 'LineString') {
+              highlightLayer.setStyle({
+                color: '#ffff00',
+              });
+            } else {
+              highlightLayer.setStyle({
+                fillColor: '#ffff00',
+                fillOpacity: 1
+              });
+            }
+        }
+    function highlightReset(e) {
+        for (i in e.target._eventParents) {
+            e.target._eventParents[i].resetStyle(e.target);
+        }
+    }
+    function highlightClick(e) {
+        e.style.backgroundColor = '#ffff00';
+    }
+
+
+    function add_N(steps) {
+        n_layer = L.choropleth(baru, {
+            valueProperty: 'N_rata2',
+            scale: ['white', 'green'],
+            steps: steps,
+            mode: 'e',
+            style: style,
+
+            onEachFeature: function(feature, layer) {
+                layer.on({
+                    mouseout: highlightReset,
+                    mouseover: highlightFeature
+                });
+                layer.bindPopup('<h4>Unit Name : ' + feature.properties.UNITNAME + '</h4>' +
+                                '<h4>Name : ' + feature.properties.NAME + '</h4>' +
+                                '<h4>N : ' + feature.properties.N_rata2 + '</h4>')
+            }
+        }).addTo(map);
+    }
+    add_N(1);
+    layerControl.addOverlay(n_layer, "N")
+
+    function add_P(steps) {
+        p_layer = L.choropleth(baru, {
+            valueProperty: 'P_rata2',
+            scale: ['white', 'blue'],
+            steps: steps,
+            mode: 'e',
+            style: style,
+
+            onEachFeature: function(feature, layer) {
+                layer.on({
+                    mouseout: highlightReset,
+                    mouseover: highlightFeature
+                });
+                layer.bindPopup('<h4>Unit Name : ' + feature.properties.UNITNAME + '</h4>' +
+                                '<h4>Name : ' + feature.properties.NAME + '</h4>' +
+                                '<h4>P : ' + feature.properties.P_rata2 + '</h4>')
+            }
+        }).addTo(map);
+    }
+    add_P(1);
+    layerControl.addOverlay(p_layer, "P")
+
+    function add_K(steps) {
+        k_layer = L.choropleth(baru, {
+            valueProperty: 'K_rata2',
+            scale: ['white', 'purple'],
+            steps: steps,
+            mode: 'e',
+            style: style,
+
+            onEachFeature: function(feature, layer) {
+                layer.on({
+                    mouseout: highlightReset,
+                    mouseover: highlightFeature
+                });
+                layer.bindPopup('<h4>Unit Name : ' + feature.properties.UNITNAME + '</h4>' +
+                                '<h4>Name : ' + feature.properties.NAME + '</h4>' +
+                                '<h4>K : ' + feature.properties.K_rata2 + '</h4>')
+            }
+        }).addTo(map);
+    }
+    add_K(1);
+    layerControl.addOverlay(k_layer, "K")
+
+    function add_pH(steps) {
+        ph_layer = L.choropleth(baru, {
+            valueProperty: 'pH_rata2',
+            scale: ['white', 'red'],
+            steps: steps,
+            mode: 'e',
+            style: style,
+
+            onEachFeature: function(feature, layer) {
+                layer.on({
+                    mouseout: highlightReset,
+                    mouseover: highlightFeature
+                });
+                layer.bindPopup('<h4>Unit Name : ' + feature.properties.UNITNAME + '</h4>' +
+                                '<h4>Name : ' + feature.properties.NAME + '</h4>' +
+                                '<h4>pH : ' + feature.properties.pH_rata2 + '</h4>')
+            }
+        }).addTo(map);
+    }
+    add_pH(1);
+    layerControl.addOverlay(ph_layer, "pH")
+
+    $("#kelas_n").change(function(){
+        if(map.hasLayer(n_layer)){
+            map.removeLayer(n_layer);            
+        }
+        layerControl.removeLayer(n_layer);
+        n_layer = null;
+        add_N($(this).val());
+
+        if($(this).val() > 1){
+            document.getElementById('legenda_n').innerHTML = legend_for_choropleth_layer(n_layer, 'N', '')
+            document.getElementById('legenda_n').style.display = 'block';
+        }
+        else{
+            document.getElementById('legenda_n').innerHTML = '';
+            document.getElementById('legenda_n').style.display = 'none';
+        }
+
+        layerControl.removeLayer(p_layer);
+        layerControl.removeLayer(k_layer);
+        layerControl.removeLayer(ph_layer);
+
+        layerControl.addOverlay(n_layer, "N");
+        layerControl.addOverlay(p_layer, "P");
+        layerControl.addOverlay(k_layer, "K");
+        layerControl.addOverlay(ph_layer, "pH");
+
+    })
+
+    $("#kelas_p").change(function(){
+        if(map.hasLayer(p_layer)){
+            map.removeLayer(p_layer);            
+        }
+        layerControl.removeLayer(p_layer);
+        p_layer = null;
+        add_P($(this).val());
+
+        if($(this).val() > 1){
+            document.getElementById('legenda_p').innerHTML = legend_for_choropleth_layer(p_layer, 'P', '')
+            document.getElementById('legenda_p').style.display = 'block';
+        }
+        else{
+            document.getElementById('legenda_p').innerHTML = '';
+            document.getElementById('legenda_p').style.display = 'none';
+        }
+
+        layerControl.removeLayer(n_layer);
+        layerControl.removeLayer(k_layer);
+        layerControl.removeLayer(ph_layer);
+
+        layerControl.addOverlay(n_layer, "N");
+        layerControl.addOverlay(p_layer, "P");
+        layerControl.addOverlay(k_layer, "K");
+        layerControl.addOverlay(ph_layer, "pH");
+
+    })
+    
+    $("#kelas_k").change(function(){
+        if(map.hasLayer(k_layer)){
+            map.removeLayer(k_layer);            
+        }
+        layerControl.removeLayer(k_layer);
+        k_layer = null;
+        add_K($(this).val());
+
+        if($(this).val() > 1){
+            document.getElementById('legenda_k').innerHTML = legend_for_choropleth_layer(k_layer, 'K', '')
+            document.getElementById('legenda_k').style.display = 'block';
+        }
+        else{
+            document.getElementById('legenda_k').innerHTML = '';
+            document.getElementById('legenda_k').style.display = 'none';
+        }
+
+        layerControl.removeLayer(n_layer);
+        layerControl.removeLayer(p_layer);
+        layerControl.removeLayer(ph_layer);
+
+        layerControl.addOverlay(n_layer, "N");
+        layerControl.addOverlay(p_layer, "P");
+        layerControl.addOverlay(k_layer, "K");
+        layerControl.addOverlay(ph_layer, "pH");
+
+    })
+
+    $("#kelas_ph").change(function(){
+        if(map.hasLayer(ph_layer)){
+            map.removeLayer(ph_layer);            
+        }
+        layerControl.removeLayer(ph_layer);
+        ph_layer = null;
+        add_pH($(this).val());
+
+        if($(this).val() > 1){
+            document.getElementById('legenda_ph').innerHTML = legend_for_choropleth_layer(ph_layer, 'pH', '')
+            document.getElementById('legenda_ph').style.display = 'block';
+        }
+        else{
+            document.getElementById('legenda_ph').innerHTML = '';
+            document.getElementById('legenda_ph').style.display = 'none';
+        }
+
+        layerControl.removeLayer(n_layer);
+        layerControl.removeLayer(p_layer);
+        layerControl.removeLayer(k_layer);
+
+        layerControl.addOverlay(n_layer, "N");
+        layerControl.addOverlay(p_layer, "P");
+        layerControl.addOverlay(k_layer, "K");
+        layerControl.addOverlay(ph_layer, "pH");
+
+    });
+
+    function legend_for_choropleth_layer(layer, name, units, id) {
+        var limits = layer.options.limits;
+        var colors = layer.options.colors;
+        var labels = [];
+
+        if(limits.length > 1){
+            var HTML = name
+            limits.forEach(function (limit, index) {
+                if(index === 0) {
+                    var to = parseFloat(limits[index]).toFixed(2);
+                    var range_str = "<=" + to;
+                }
+                else {
+                    var from = parseFloat(limits[index - 1].toFixed(2));
+                    var to = parseFloat(limits[index]).toFixed(2);
+                    var range_str = from + " - " + to;
+                }
+                labels.push('<li class="sublegend-item"><div class="sublegend-color" style="background-color: ' +
+                    colors[index] + '; color:' + colors[index] + ' ">A </div> ' + range_str + units + '</li>');
+            })
+            HTML += '<ul id="' + id + '" class="sublegend">' + labels.join('') + '</ul>';
+        }
+        else {
+            var HTML = '';
+        }
+
+        return HTML;
+    }
+    
+    
+</script>
+
+</body>
+
+</html>
